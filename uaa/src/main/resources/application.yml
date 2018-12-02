@@ -1,6 +1,3 @@
-#logging:
-#  level: debug
-
 server:
   port: 9999
   servlet:
@@ -13,9 +10,6 @@ spring:
     url: jdbc:h2:mem:db
     username: sa
     driver-class-name: org.h2.Driver
-  h2:
-    console:
-      enabled: true
 
 # openssl genrsa -out private.pem 2048
 # openssl rsa -in private.pem -outform PEM -pubout -out public.pem

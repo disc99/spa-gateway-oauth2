@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -16,6 +17,7 @@ import org.springframework.security.config.annotation.web.configuration.WebSecur
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
@@ -32,13 +34,16 @@ import org.springframework.security.oauth2.provider.OAuth2Authentication;
 import org.springframework.security.oauth2.provider.token.TokenEnhancer;
 import org.springframework.security.oauth2.provider.token.TokenEnhancerChain;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import javax.servlet.*;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Arrays;
@@ -59,24 +64,23 @@ public class UaaApplication {
         return authentication;
     }
 
+    @Component
+    @Order(Ordered.HIGHEST_PRECEDENCE)
     static class CorsFilter implements Filter {
-        public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
-            HttpServletResponse response = (HttpServletResponse) res;
+        @Override
+        public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain) throws IOException, ServletException {
+            HttpServletResponse response = (HttpServletResponse) resp;
+            HttpServletRequest request = (HttpServletRequest) req;
             response.setHeader("Access-Control-Allow-Origin", "*");
             response.setHeader("Access-Control-Allow-Methods", "*");
             response.setHeader("Access-Control-Max-Age", "3600");
             response.setHeader("Access-Control-Allow-Headers", "authorization");
-            chain.doFilter(req, res);
+            if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+                response.setStatus(HttpServletResponse.SC_OK);
+            } else {
+                chain.doFilter(req, resp);
+            }
         }
-
-        public void init(FilterConfig filterConfig) {}
-
-        public void destroy() {}
-    }
-
-    @Bean
-    CorsFilter corsFilter() {
-        return new CorsFilter();
     }
 
     @Bean
@@ -99,29 +103,26 @@ public class UaaApplication {
         UserDetailsService userDetailsService;
 
         WebSecurityConfig(UserDetailsService userDetailsService) {
-            super();
             this.userDetailsService = userDetailsService;
         }
 
-        // TODO refactor
         @Override
         protected void configure(HttpSecurity http) throws Exception {
             http
                     .formLogin()
-                    .loginPage("/login").permitAll()
-                    .and()
+                        .loginPage("/login").permitAll()
+                        .and()
                     .requestMatchers()
-                    .antMatchers("/", "/login", "/logout", "/oauth/authorize")
-                    .and()
+                        .antMatchers("/", "/login", "/logout", "/oauth/authorize")
+                        .and()
                     .authorizeRequests()
-                    .antMatchers("/login**").permitAll()
-                    .and()
+                        .antMatchers("/login**").permitAll()
+                        .and()
                     .authorizeRequests()
-                    .antMatchers(HttpMethod.OPTIONS).permitAll()
-                    .and()
+                        .antMatchers(HttpMethod.OPTIONS).permitAll()
+                        .and()
                     .userDetailsService(userDetailsService)
-                    .csrf().ignoringAntMatchers("/oauth/**")
-            ;
+                        .csrf().ignoringAntMatchers("/oauth/**");
         }
 
         @Bean
@@ -143,36 +144,21 @@ public class UaaApplication {
         public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
             clients
                     .inMemory()
-                    .withClient("demo")
-                    .secret("demo")
-                    .scopes("read")
-                    .autoApprove(true)
-                    .authorizedGrantTypes("implicit")
-                    .accessTokenValiditySeconds(10)
-                    .redirectUris("http://localhost:3000/");
+                        .withClient("demo")
+                        .secret("demo")
+                        .scopes("read")
+                        .autoApprove(true)
+                        .authorizedGrantTypes("implicit")
+                        .accessTokenValiditySeconds(10)
+                        .redirectUris("http://localhost:3000/");
         }
 
         @Override
         public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
             security
-                    .passwordEncoder(passwordEncoder())
+                    .passwordEncoder(new BCryptPasswordEncoder())
                     .checkTokenAccess("isAuthenticated()")
                     .tokenKeyAccess("permitAll()");
-        }
-
-        // TODO Fix depicted
-        private PasswordEncoder passwordEncoder() {
-            return new PasswordEncoder() {
-                private final PasswordEncoder passwordEncoder = NoOpPasswordEncoder.getInstance();
-                @Override
-                public boolean matches(CharSequence rawPassword, String encodedPassword) {
-                    return StringUtils.hasText(encodedPassword) ? passwordEncoder.matches(rawPassword, encodedPassword) : true;
-                }
-                @Override
-                public String encode(CharSequence rawPassword) {
-                    return passwordEncoder.encode(rawPassword);
-                }
-            };
         }
 
         @Override
@@ -191,17 +177,12 @@ public class UaaApplication {
 
         @Bean
         TokenEnhancer tokenEnhancer() {
-            return new CustomTokenEnhancer();
-        }
-    }
-
-    static class CustomTokenEnhancer implements TokenEnhancer {
-        @Override
-        public OAuth2AccessToken enhance(OAuth2AccessToken accessToken, OAuth2Authentication authentication) {
-            OAuth2User user = (OAuth2User) authentication.getPrincipal();
-            Map<String, Object> additionalInfo = new ObjectMapper().convertValue(user, new TypeReference<Map<String, Object>>() {});
-            ((DefaultOAuth2AccessToken) accessToken).setAdditionalInformation(additionalInfo);
-            return accessToken;
+            return (accessToken, authentication) -> {
+                OAuth2User user = (OAuth2User) authentication.getPrincipal();
+                Map<String, Object> additionalInfo = new ObjectMapper().convertValue(user, new TypeReference<Map<String, Object>>() {});
+                ((DefaultOAuth2AccessToken) accessToken).setAdditionalInformation(additionalInfo);
+                return accessToken;
+            };
         }
     }
 
@@ -212,11 +193,10 @@ public class UaaApplication {
         public void configure(HttpSecurity http) throws Exception {
             http
                     .sessionManagement()
-                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                    .and()
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        .and()
                     .authorizeRequests()
-                    .mvcMatchers(GET, "/userinfo").access("#oauth2.hasScope('read')")
-            ;
+                        .mvcMatchers(GET, "/userinfo").access("#oauth2.hasScope('read')");
         }
     }
 }

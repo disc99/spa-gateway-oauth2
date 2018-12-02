@@ -42,9 +42,9 @@ class App extends Component {
   }
 
   checkToken(location) {
-    if (!(localStorage.getItem('access_token'))) {
+    if (!localStorage.getItem('access_token')) {
       // redirect
-      window.location.href = authorizationUrl + '/oauth/authorize?client_id=' + clientId + '&response_type=token&redirect_uri=' + location.href
+      window.location.href = `${authorizationUrl}/oauth/authorize?client_id=${clientId}&response_type=token&redirect_uri=${location.href}`
       return false
     } else {
       // Remove hash
@@ -54,11 +54,11 @@ class App extends Component {
   }
 
   userinfo() {
-    return this.httpGet(authorizationUrl + '/userinfo')
+    return this.httpGet(`${authorizationUrl}/userinfo`)
   }
 
   profile() {
-    return this.httpGet(gatewayUrl + '?property=helpers.contextualCard')
+    return this.httpGet(`${gatewayUrl}?property=helpers.contextualCard`)
   }
 
   httpGet(url) {
@@ -70,13 +70,13 @@ class App extends Component {
       }
     }).then(res => {
         if (res.status === 401) {
-            localStorage.removeItem('access_token')
-            this.setState({isSessionExpire: true})
-            throw new Error(res.statusText)
+          localStorage.removeItem('access_token')
+          this.setState({isSessionExpire: true})
+          throw new Error(res.statusText)
         }
         return res.json()
     }).catch(err => {
-        console.error(err)
+      console.error(err)
     })
   }
 
