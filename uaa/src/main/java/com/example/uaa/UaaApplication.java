@@ -50,180 +50,173 @@ import static org.springframework.http.HttpMethod.GET;
 @RestController
 public class UaaApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(UaaApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(UaaApplication.class, args);
+    }
 
-	@GetMapping("/userinfo")
-	Object userinfo(Authentication authentication) {
-		return authentication;
-	}
+    @GetMapping("/userinfo")
+    Object userinfo(Authentication authentication) {
+        return authentication;
+    }
 
-	static class CorsFilter implements Filter {
-		public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
-			HttpServletResponse response = (HttpServletResponse) res;
-			response.setHeader("Access-Control-Allow-Origin", "*");
-			response.setHeader("Access-Control-Allow-Methods", "*");
-			response.setHeader("Access-Control-Max-Age", "3600");
-			response.setHeader("Access-Control-Allow-Headers", "authorization");
-			chain.doFilter(req, res);
-		}
+    static class CorsFilter implements Filter {
+        public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
+            HttpServletResponse response = (HttpServletResponse) res;
+            response.setHeader("Access-Control-Allow-Origin", "*");
+            response.setHeader("Access-Control-Allow-Methods", "*");
+            response.setHeader("Access-Control-Max-Age", "3600");
+            response.setHeader("Access-Control-Allow-Headers", "authorization");
+            chain.doFilter(req, res);
+        }
 
-		public void init(FilterConfig filterConfig) {}
+        public void init(FilterConfig filterConfig) {}
 
-		public void destroy() {}
-	}
+        public void destroy() {}
+    }
 
-	@Bean
-	CorsFilter corsFilter() {
-		return new CorsFilter();
-	}
+    @Bean
+    CorsFilter corsFilter() {
+        return new CorsFilter();
+    }
 
-	@Bean
-	PasswordEncoder passwordEncoder() {
-		return new Pbkdf2PasswordEncoder();
-	}
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return new Pbkdf2PasswordEncoder();
+    }
 
-	@Configuration
-	static class WebMvcConfig implements WebMvcConfigurer {
-		@Override
-		public void addViewControllers(ViewControllerRegistry registry) {
-			registry.addViewController("/login").setViewName("/login");
-		}
-	}
+    @Configuration
+    static class WebMvcConfig implements WebMvcConfigurer {
+        @Override
+        public void addViewControllers(ViewControllerRegistry registry) {
+            registry.addViewController("/login").setViewName("/login");
+        }
+    }
 
-	@Configuration
-	@EnableGlobalMethodSecurity(prePostEnabled = true)
-	@Order(-20)
-	static class WebSecurityConfig extends WebSecurityConfigurerAdapter {
-		UserDetailsService userDetailsService;
+    @Configuration
+    @EnableGlobalMethodSecurity(prePostEnabled = true)
+    @Order(-20)
+    static class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+        UserDetailsService userDetailsService;
 
-		WebSecurityConfig(UserDetailsService userDetailsService) {
-			super();
-			this.userDetailsService = userDetailsService;
-		}
+        WebSecurityConfig(UserDetailsService userDetailsService) {
+            super();
+            this.userDetailsService = userDetailsService;
+        }
 
-		// TODO refactor
-		@Override
-		protected void configure(HttpSecurity http) throws Exception {
-			http
-					.formLogin()
-						.loginPage("/login").permitAll()
-						.and()
-					.requestMatchers()
-						.antMatchers("/", "/login", "/logout", "/oauth/authorize", "/oauth/confirm_access")
-						.and()
-					.authorizeRequests()
-						.antMatchers("/login**").permitAll()
-						.and()
-					.authorizeRequests()
-						.antMatchers(HttpMethod.OPTIONS).permitAll()
-						.and()
-					.userDetailsService(userDetailsService)
-						.csrf().ignoringAntMatchers("/oauth/**")
-			;
-		}
+        // TODO refactor
+        @Override
+        protected void configure(HttpSecurity http) throws Exception {
+            http
+                    .formLogin()
+                    .loginPage("/login").permitAll()
+                    .and()
+                    .requestMatchers()
+                    .antMatchers("/", "/login", "/logout", "/oauth/authorize")
+                    .and()
+                    .authorizeRequests()
+                    .antMatchers("/login**").permitAll()
+                    .and()
+                    .authorizeRequests()
+                    .antMatchers(HttpMethod.OPTIONS).permitAll()
+                    .and()
+                    .userDetailsService(userDetailsService)
+                    .csrf().ignoringAntMatchers("/oauth/**")
+            ;
+        }
 
-		@Bean
-		public AuthenticationManager authenticationManagerBean() throws Exception {
-			return super.authenticationManagerBean();
-		}
-	}
+        @Bean
+        public AuthenticationManager authenticationManagerBean() throws Exception {
+            return super.authenticationManagerBean();
+        }
+    }
 
-	@Configuration
-	@EnableAuthorizationServer
-	static class AuthorizationServerConfig extends AuthorizationServerConfigurerAdapter {
-		AuthenticationManager authenticationManager;
+    @Configuration
+    @EnableAuthorizationServer
+    static class AuthorizationServerConfig extends AuthorizationServerConfigurerAdapter {
+        AuthenticationManager authenticationManager;
 
-		public AuthorizationServerConfig(AuthenticationManager authenticationManager) {
-			this.authenticationManager = authenticationManager;
-		}
+        public AuthorizationServerConfig(AuthenticationManager authenticationManager) {
+            this.authenticationManager = authenticationManager;
+        }
 
-		// TODO reactor
-		@Override
-		public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
-			clients
-					.inMemory()
-						.withClient("demo")
-						.secret("demo")
-						.scopes("read")
-						.autoApprove(true)
-						.authorizedGrantTypes("implicit")
-						.accessTokenValiditySeconds(10)
-						.redirectUris(
-								"http://localhost:3000/",
-								"http://localhost:3000/login",
-								"http://localhost:3000/login/oauth2/code/home"
-						)
-			;
-		}
+        @Override
+        public void configure(ClientDetailsServiceConfigurer clients) throws Exception {
+            clients
+                    .inMemory()
+                    .withClient("demo")
+                    .secret("demo")
+                    .scopes("read")
+                    .autoApprove(true)
+                    .authorizedGrantTypes("implicit")
+                    .accessTokenValiditySeconds(10)
+                    .redirectUris("http://localhost:3000/");
+        }
 
-		// TODO need?
-		@Override
-		public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
-			security
-					.passwordEncoder(passwordEncoder())
-					.checkTokenAccess("isAuthenticated()")
-					.tokenKeyAccess("permitAll()");
-		}
+        @Override
+        public void configure(AuthorizationServerSecurityConfigurer security) throws Exception {
+            security
+                    .passwordEncoder(passwordEncoder())
+                    .checkTokenAccess("isAuthenticated()")
+                    .tokenKeyAccess("permitAll()");
+        }
 
-		// TODO Fix depicted
-		private PasswordEncoder passwordEncoder() {
-			return new PasswordEncoder() {
-				private final PasswordEncoder passwordEncoder = NoOpPasswordEncoder.getInstance();
-				@Override
-				public boolean matches(CharSequence rawPassword, String encodedPassword) {
-					return StringUtils.hasText(encodedPassword) ? passwordEncoder.matches(rawPassword, encodedPassword) : true;
-				}
-				@Override
-				public String encode(CharSequence rawPassword) {
-					return passwordEncoder.encode(rawPassword);
-				}
-			};
-		}
+        // TODO Fix depicted
+        private PasswordEncoder passwordEncoder() {
+            return new PasswordEncoder() {
+                private final PasswordEncoder passwordEncoder = NoOpPasswordEncoder.getInstance();
+                @Override
+                public boolean matches(CharSequence rawPassword, String encodedPassword) {
+                    return StringUtils.hasText(encodedPassword) ? passwordEncoder.matches(rawPassword, encodedPassword) : true;
+                }
+                @Override
+                public String encode(CharSequence rawPassword) {
+                    return passwordEncoder.encode(rawPassword);
+                }
+            };
+        }
 
-		@Override
-		public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
-			TokenEnhancerChain tokenEnhancerChain = new TokenEnhancerChain();
-			tokenEnhancerChain.setTokenEnhancers(Arrays.asList(tokenEnhancer(), jwtAccessTokenConverter()));
-			endpoints.tokenEnhancer(tokenEnhancerChain)
-					.authenticationManager(authenticationManager);
-		}
+        @Override
+        public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception {
+            TokenEnhancerChain tokenEnhancerChain = new TokenEnhancerChain();
+            tokenEnhancerChain.setTokenEnhancers(Arrays.asList(tokenEnhancer(), jwtAccessTokenConverter()));
+            endpoints.tokenEnhancer(tokenEnhancerChain)
+                    .authenticationManager(authenticationManager);
+        }
 
-		@ConfigurationProperties("jwt")
-		@Bean
-		JwtAccessTokenConverter jwtAccessTokenConverter() {
-			return new JwtAccessTokenConverter();
-		}
+        @ConfigurationProperties("jwt")
+        @Bean
+        JwtAccessTokenConverter jwtAccessTokenConverter() {
+            return new JwtAccessTokenConverter();
+        }
 
-		@Bean
-		TokenEnhancer tokenEnhancer() {
-			return new CustomTokenEnhancer();
-		}
-	}
+        @Bean
+        TokenEnhancer tokenEnhancer() {
+            return new CustomTokenEnhancer();
+        }
+    }
 
-	static class CustomTokenEnhancer implements TokenEnhancer {
-		@Override
-		public OAuth2AccessToken enhance(OAuth2AccessToken accessToken, OAuth2Authentication authentication) {
-			OAuth2User user = (OAuth2User) authentication.getPrincipal();
-			Map<String, Object> additionalInfo = new ObjectMapper().convertValue(user, new TypeReference<Map<String, Object>>() {});
-			((DefaultOAuth2AccessToken) accessToken).setAdditionalInformation(additionalInfo);
-			return accessToken;
-		}
-	}
+    static class CustomTokenEnhancer implements TokenEnhancer {
+        @Override
+        public OAuth2AccessToken enhance(OAuth2AccessToken accessToken, OAuth2Authentication authentication) {
+            OAuth2User user = (OAuth2User) authentication.getPrincipal();
+            Map<String, Object> additionalInfo = new ObjectMapper().convertValue(user, new TypeReference<Map<String, Object>>() {});
+            ((DefaultOAuth2AccessToken) accessToken).setAdditionalInformation(additionalInfo);
+            return accessToken;
+        }
+    }
 
-	@Configuration
-	@EnableResourceServer
-	static class ResourceServerConfig extends ResourceServerConfigurerAdapter {
-		@Override
-		public void configure(HttpSecurity http) throws Exception {
-			http
-					.sessionManagement()
-						.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-						.and()
-					.authorizeRequests()
-						.mvcMatchers(GET, "/userinfo").access("#oauth2.hasScope('read')")
-			;
-		}
-	}
+    @Configuration
+    @EnableResourceServer
+    static class ResourceServerConfig extends ResourceServerConfigurerAdapter {
+        @Override
+        public void configure(HttpSecurity http) throws Exception {
+            http
+                    .sessionManagement()
+                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                    .and()
+                    .authorizeRequests()
+                    .mvcMatchers(GET, "/userinfo").access("#oauth2.hasScope('read')")
+            ;
+        }
+    }
 }

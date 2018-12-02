@@ -25,12 +25,7 @@ public class GatewayApplication {
 								.setResponseHeader("Access-Control-Allow-Origin", "*")
 						)
 						.uri("http://faker.hook.io")
-				)
-				.route("route_2", r -> r
-						.host("127.0.0.1:8080")
-						.uri("http://httpstat.us:80")
-				)
-				.build();
+				).build();
 	}
 
 	@Bean
