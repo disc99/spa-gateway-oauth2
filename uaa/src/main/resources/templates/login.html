@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>User Auth</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.0.0-beta.11/css/uikit.min.css"/>
+</head>
+<body>
+    <div class="uk-section">
+        <div class="uk-width-large uk-margin-auto uk-card uk-card-default uk-card-body">
+            <h3 class="uk-card-title uk-text-center">LOGIN</h3>
+
+            <p class="uk-text-danger" th:if="${param.error}">
+                Login failed ...
+            </p>
+    
+            <p class="uk-text-success" th:if="${param.logout}">
+                Logout succeeded.
+            </p>
+
+            <form class="uk-form-stacked" method="post" th:action="@{/login}">
+                <div class="uk-margin">
+                    <label class="uk-form-label" for="username">Username</label>
+                    <div class="uk-form-controls">
+                        <input class="uk-input" id="username" type="text" name="username" value="user"/>
+                    </div>
+                </div>
+                <div class="uk-margin">
+                    <label class="uk-form-label" for="password">Password</label>
+                    <div class="uk-form-controls">
+                        <input class="uk-input" id="password" type="password" name="password" value="password"/>
+                    </div>
+                </div>
+                <div class="uk-margin">
+                    <button class="uk-width-1-1 uk-button uk-button-primary uk-button-large">Login</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

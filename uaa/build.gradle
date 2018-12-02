@@ -1,0 +1,48 @@
+buildscript {
+	ext {
+		springBootVersion = '2.1.0.RELEASE'
+		springCloudVersion = 'Greenwich.M3'
+		springSecurityOauth2AutoconfigVersion = '2.0.5.RELEASE'
+		springDependencyMenegementPluginVersion = '1.0.2.RELEASE'
+	}
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+		classpath "io.spring.gradle:dependency-management-plugin:${springDependencyMenegementPluginVersion}"
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = 1.8
+
+repositories {
+	mavenCentral()
+	maven {
+		url 'http://repo.spring.io/milestone'
+	}
+}
+
+dependencies {
+	implementation('org.springframework.boot:spring-boot-starter-web')
+	implementation('org.springframework.boot:spring-boot-starter-jdbc')
+//	implementation('org.springframework.cloud:spring-cloud-starter-oauth2')
+	implementation('org.springframework.boot:spring-boot-starter-thymeleaf')
+	compile 'org.springframework.boot:spring-boot-starter-security'
+	compile "org.springframework.security.oauth.boot:spring-security-oauth2-autoconfigure:${springSecurityOauth2AutoconfigVersion}"
+	runtimeOnly('com.h2database:h2')
+	testImplementation('org.springframework.boot:spring-boot-starter-test')
+}
+
+dependencyManagement {
+	imports {
+		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+	}
+}

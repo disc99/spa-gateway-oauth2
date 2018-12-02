@@ -1,0 +1,1 @@
+INSERT INTO users VALUES ('user', 'e40e7a37bdc286c73d414784068f8601c23923c55060bc3c571e26b80c5c5bf70f4346a926983f10', 'example@mail.com');
